@@ -1,4 +1,4 @@
-"""A minimal tool-calling agent built directly with LangGraph."""
+"""Agent LangGraph toi gian, co tool va vong lap tu dong."""
 
 from __future__ import annotations
 
@@ -19,29 +19,29 @@ load_dotenv()
 
 
 class AgentState(TypedDict):
-    """The graph state persisted for each conversation thread."""
+    """Trang thai duoc luu rieng cho tung cuoc hoi thoai (thread)."""
 
     messages: Annotated[list[AnyMessage], add_messages]
 
 
 @tool
 def calculate(expression: str) -> str:
-    """Evaluate a basic arithmetic expression, such as '(24 * 3) / 2'."""
+    """Tinh bieu thuc co ban, vi du '(24 * 3) / 2'."""
     allowed = set("0123456789+-*/(). %")
     if not expression or any(character not in allowed for character in expression):
-        return "Only basic arithmetic expressions are allowed."
+        return "Chi chap nhan bieu thuc tinh toan co ban."
 
     try:
         return str(eval(expression, {"__builtins__": {}}, {}))
     except (ArithmeticError, SyntaxError):
-        return "I could not evaluate that expression."
+        return "Khong the tinh bieu thuc nay."
 
 
 tools = [calculate]
 
 
 def route_after_model(state: AgentState) -> Literal["tools", "end"]:
-    """Continue only when the model requested a tool."""
+    """Neu model yeu cau tool thi chuyen den tools, nguoc lai thi ket thuc."""
     if state["messages"][-1].tool_calls:
         return "tools"
     return "end"
@@ -58,9 +58,12 @@ def build_agent():
     model_with_tools = model.bind_tools(tools)
 
     def call_model(state: AgentState) -> dict[str, list[AnyMessage]]:
-        """Ask the model for either an answer or one or more tool calls."""
+        """Node agent: model tu tra loi hoac yeu cau goi mot hay nhieu tool."""
         system = SystemMessage(
-            content="You are a concise helpful assistant. Use the calculate tool for arithmetic."
+            content=(
+                "Ban la tro ly huu ich, tra loi ngan gon bang tieng Viet. "
+                "Khi can tinh toan, hay dung tool calculate thay vi tu nham."
+            )
         )
         return {"messages": [model_with_tools.invoke([system, *state["messages"]])]}
 
@@ -75,17 +78,17 @@ def build_agent():
 
 def main() -> None:
     if not os.getenv("OPENAI_API_KEY"):
-        raise SystemExit("Set OPENAI_API_KEY in .env before running this program.")
+        raise SystemExit("Hay dat OPENAI_API_KEY trong .env truoc khi chay chuong trinh.")
 
     agent = build_agent()
     config = {"configurable": {"thread_id": "learning-session"}}
-    print("LangGraph starter. Type 'exit' to quit.")
+    print("LangGraph starter. Nhap 'exit' de thoat.")
 
     while prompt := input("\nYou: ").strip():
         if prompt.lower() in {"exit", "quit"}:
             break
         result = agent.invoke({"messages": [HumanMessage(content=prompt)]}, config=config)
-        print(f"Assistant: {result['messages'][-1].content}")
+        print(f"Tro ly: {result['messages'][-1].content}")
 
 
 if __name__ == "__main__":
